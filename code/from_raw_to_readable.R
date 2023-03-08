@@ -4,15 +4,18 @@ library(dplyr)
 library(stringr)
 
 # Read data and oncatenate two modes
-df_log <- read_csv("data/TMA-LogData-WithFlag-27Sept2022.csv")
+df_log <- read_csv("data/log.csv")
 df_log$modality <- "log"
-df_eye <- read_csv("data/TMA-EyeGaze-WithFlag-27Sept2022.csv")
+df_eye <- read_csv("data/eye.csv")
 df_eye$modality <- "eye"
 df <- rbind(df_log, df_eye)
 colnames(df) <- gsub(" ", "", colnames(df))
+df
+# # Filter out invalid timestamps
+# df <- df[df$Start >= 0,]
 
-# Filter out invalid timestamps
-df <- df[df$Start >= 0,]
+# Re-coordinate the timestamp so we don't have negative timestamps
+### Muhammad
 
 # Use level one as example
 # df <- df[df$Level == "01 - Where Do I Go?", ]

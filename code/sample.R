@@ -14,12 +14,23 @@ for (file.name in file.names){
   file_index <- file_index + 1
 }
 code_cols <- c("StartorRestart", "RuleBreak", "Deviation", "PassedBoundary", "Flag", "YouObject", "YouRule", "TextObstacle", "BrokenStop", "OutsideText", "WinText", "Is.Outside", "ObjectObstacle", "OtherObstacle")           
-df$code_sum <- rowSums(df[,code_cols])
-non_zero_df <- df[df$code_sum != 0,]
-unique_ids <- as.numeric(unique(c(non_zero_df$unique_eye_gaze_id, non_zero_df$unique_log_id, non_zero_df$unique_pos_id)))
+log_code_cols <- c("StartorRestart", "RuleBreak", "Deviation", "PassedBoundary")           
+eye_code_cols <- c("Flag", "YouObject", "YouRule", "TextObstacle", "BrokenStop", "OutsideText", "WinText", "Is.Outside", "ObjectObstacle", "OtherObstacle")           
+
+df$log_code_sum <- rowSums(df[,log_code_cols])
+df$eye_code_sum <- rowSums(df[,eye_code_cols])
+
+log_non_zero_df <- df[df$log_code_sum != 0,]
+eye_non_zero_df <- df[df$eye_code_sum != 0,]
+
+### Sample 50 log records and 50 eye records
+log_unique_ids <- as.numeric(unique(c(log_non_zero_df$unique_log_id, log_non_zero_df$unique_pos_id)))
+eye_unique_ids <- as.numeric(unique(c(eye_non_zero_df$unique_eye_gaze_id)))
+
 set.seed(123)
-unique_ids_sampled <- sample(unique_ids,100)
-unique_ids_sampled
+unique_ids_sampled <- c(sample(log_unique_ids,50), sample(eye_unique_ids,50))
+### Unique id
+sort(unique_ids_sampled)
 
 
 
@@ -28,4 +39,7 @@ df$sampled <- "FALSE"
 df$sampled[df$unique_eye_gaze_id %in% unique_ids_sampled | df$unique_log_id %in% unique_ids_sampled | df$unique_pos_id %in% unique_ids_sampled] <- "TRUE"
 df$sampled
 View(df)
-write.csv(df, "data/combined_sampled.csv")
+
+### Replace NA with ""
+df[,c("unique_log_id",	"unique_pos_id")][is.na(df[,c("unique_log_id",	"unique_pos_id")])] <- ""
+write.csv(df, "data/combined_sampled_2_12.csv")

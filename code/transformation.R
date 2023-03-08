@@ -4,7 +4,7 @@ library(readr)
 library(tidyr)
 library(dplyr)
 
-df_all <- read_csv("data/combined.csv")
+df <- read_csv("data/combined.csv")
 code_cols <- c("StartorRestart", "RuleBreak", "Deviation", "PassedBoundary", 
                "Flag", "YouObject", "YouRule", "TextObstacle", "BrokenStop", "OutsideText", "WinText", "Is-Outside", "ObjectObstacle", "OtherObstacle")
 
@@ -12,10 +12,16 @@ code_cols <- c("StartorRestart", "RuleBreak", "Deviation", "PassedBoundary",
 players <- unique(df$PlayerID)
 # players <- 4
 one_to_multi_lines <- function(line, time_unit){
-  # browser()
   lines <- data.frame(matrix(ncol = ncol(df)+1, nrow = 0))
   colnames(lines) <- c("time", colnames(df))
-  line_num <- ceiling((line$End - line$Start) / time_unit)
+  if(line$End - line$Start == 0){
+    line_num <- 1
+  }
+  else{
+    line_num <- ceiling((line$End - line$Start) / time_unit)
+  }
+  
+  print(paste0("line_num:",line_num))
   for (num in seq(0, line_num-1)){
     print(line_num-1)
     line_temp <- line
@@ -27,7 +33,7 @@ one_to_multi_lines <- function(line, time_unit){
 }
 
 for(player in players){
-  print(player)
+  print(paste0("player:",player))
   df_all <- df[df$PlayerID == player, ]
   ### Standardize time to seconds
   df_eye <- df_all[df_all$modality == "eye", ]
@@ -39,7 +45,7 @@ for(player in players){
   colnames(rep_df) <- c("time", colnames(df_eye))
   
   for(i in seq(1,nrow(df_eye))){
-    print(i)
+    print(paste0("df_eye:",i))
     rep_df <- rbind(rep_df, one_to_multi_lines(df_eye[i,], time_unit))
     # print(rep_df)
   }
@@ -51,11 +57,11 @@ for(player in players){
   # View(df_detail)
   df_log$modality <- ifelse(df_detail$A == "change", "position", "log")
   # View(df_log)
-  
+  # browser()
   ### Group by Start and Modality, aggregate contents in different lines, add codes together, keep the min of unique event index
   df_log_long <- df_log %>%
     group_by(PlayerID, Learned, LevelID, StuckID, Start, modality) %>%
-    mutate(content = paste0(Content, collapse = ","),
+    mutate(content = paste0(Content, collapse = ";"),
            StartorRestart = sum(StartorRestart),
            RuleBreak = sum(RuleBreak),
            Deviation = sum(Deviation),
@@ -83,12 +89,12 @@ for(player in players){
     if(nrow(selected_rows) == 0){ next }
     for (i in seq(1, nrow(selected_rows))) {
       if(line$modality == "position"){
-        rep_df[rep_df$time == line$Start & rep_df$PlayerID == line$PlayerID & rep_df$Learned == line$Learned & rep_df$LevelID == line$LevelID & rep_df$StuckID == line$StuckID, ][i,]$Position  <- line$Content
+        rep_df[rep_df$time == line$Start & rep_df$PlayerID == line$PlayerID & rep_df$Learned == line$Learned & rep_df$LevelID == line$LevelID & rep_df$StuckID == line$StuckID, ][i,]$Position  <- line$content
         rep_df[rep_df$time == line$Start & rep_df$PlayerID == line$PlayerID & rep_df$Learned == line$Learned & rep_df$LevelID == line$LevelID & rep_df$StuckID == line$StuckID, ][i,]$unique_pos_id  <- line$unique_index
         rep_df[rep_df$time == line$Start & rep_df$PlayerID == line$PlayerID & rep_df$Learned == line$Learned & rep_df$LevelID == line$LevelID & rep_df$StuckID == line$StuckID, ][i,code_cols] <- rep_df[rep_df$time == line$Start & rep_df$PlayerID == line$PlayerID & rep_df$Learned == line$Learned & rep_df$LevelID == line$LevelID & rep_df$StuckID == line$StuckID, ][i,code_cols] + line[,code_cols]
       }
       else{
-        rep_df[rep_df$time == line$Start & rep_df$PlayerID == line$PlayerID & rep_df$Learned == line$Learned & rep_df$LevelID == line$LevelID & rep_df$StuckID == line$StuckID, ][i,]$Log  <- line$Content
+        rep_df[rep_df$time == line$Start & rep_df$PlayerID == line$PlayerID & rep_df$Learned == line$Learned & rep_df$LevelID == line$LevelID & rep_df$StuckID == line$StuckID, ][i,]$Log  <- line$content
         rep_df[rep_df$time == line$Start & rep_df$PlayerID == line$PlayerID & rep_df$Learned == line$Learned & rep_df$LevelID == line$LevelID & rep_df$StuckID == line$StuckID, ][i,]$unique_log_id  <- line$unique_index
         rep_df[rep_df$time == line$Start & rep_df$PlayerID == line$PlayerID & rep_df$Learned == line$Learned & rep_df$LevelID == line$LevelID & rep_df$StuckID == line$StuckID, ][i,code_cols] <- rep_df[rep_df$time == line$Start & rep_df$PlayerID == line$PlayerID & rep_df$Learned == line$Learned & rep_df$LevelID == line$LevelID& rep_df$StuckID == line$StuckID, ][i,code_cols] + line[,code_cols]
       }
@@ -97,9 +103,9 @@ for(player in players){
   }
   
   # View(rep_df)
-  # colnames(rep_df)
+  colnames(rep_df)
   useful_df <- rep_df[,c("time", "unique_eye_gaze_id", "unique_log_id", "unique_pos_id","PlayerID", "Learned", "Level", "StuckID",
-                         "Eye_gaze", "Log", "Position",
+                         "Eye_gaze" , "Log", "Position",
                          code_cols)]
   useful_df[is.na(useful_df)] <- ""
   write.csv(useful_df, paste0("data/readable_form/",player,"_readable.csv"))
