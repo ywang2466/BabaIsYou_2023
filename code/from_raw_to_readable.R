@@ -42,7 +42,7 @@ df <- left_join(df, addends, by = "group_ID")
 df <- df %>%
   mutate(addend = ifelse(is.na(addend), 0, addend)) %>%
   mutate(Start = Start + addend, End = End + addend) %>%
-  select(-c(neg, addend)) # groupID removed, uncomment for demo purposes 
+  select(-c(neg, addend)) # groupID removed, uncomment for demo purposes, run sort below so eye and log are interpolated
 
 
 ### Each session  has a different current (negative) origin value. Figure out a way to set origin to 0 and recalibrate the 

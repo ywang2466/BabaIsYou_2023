@@ -1,0 +1,89 @@
+---
+title: "Multimodal ONA Model for UMN -- Baba is You"
+output:
+  html_document:
+    df_print: paged
+editor_options: 
+  chunk_output_type: inline
+---
+
+# 0. Initialize dependencies 
+```{r, echo = FALSE, message = FALSE}
+# Reinstallation sequence for ONA package
+# remove.packages("ona")
+# install.packages("ona", repos = c("https://epistemic-analytics.gitlab.io/qe-packages/ona/cran/", "https://cran.rstudio.org"))
+# remove.packages("tma")
+# install.packages("tma", repos = c("https://epistemic-analytics.gitlab.io/qe-packages/tma/cran/", "https://cran.rstudio.org"))
+
+# Load necessary libraries 
+library(rENA)
+library(ona) 
+library(tma)
+library(tidyverse)
+```
+
+# 1. Read in and process dataset
+```{r}
+df <- read_csv("~/Desktop/epistemic_analytics/BabaIsYou_2023/BabaIsYou_2023/data/combined.csv") %>% as.data.frame()
+```
+
+# 2. Specify parameters: Units, codes, metadata, and Horizon-of-observation rules
+```{r}
+unit_cols <- c("PlayerID", "LevelID")
+code_cols <- c("StartorRestart", "RuleBreak", "Deviation", "PassedBoundary", "Flag", "YouObject", "YouRule", "TextObstacle", "BrokenStop", "OutsideText", "WinText", "Is-Outside", "ObjectObstacle", "OtherObstacle")
+meta_cols <- c("StuckID", "Learned", "Level", "EventIndex", "Content", "unique_index")
+
+HOO_rules_model <-  tma:::rules(
+    LevelID %in% UNIT$LevelID 
+)
+```
+
+# 3. Define contexts based on HOO rules
+```{r}
+context_model <- tma:::contexts(
+  x = df,
+  units = unit_cols,
+  hoo_rules = HOO_rules_model
+)
+```
+
+# 4. Build ONA multimodal model 
+```{r}
+ona_multimodal_tif_accum <- tma:::accumulate_contexts (
+    x = context_model,
+    codes = code_cols,
+    weight.by = function(x) { x },
+    decay.function = function(x) {
+        modality_effect <- c("eye" = 3.1, "log" = 4.8)
+        modality <- FULL_CONTEXT[ROWS, modality]
+        duration <- FULL_CONTEXT[ROWS, {  End - Start }]
+        weight <- (x < (duration + modality_effect[modality])) * 1
+        return (weight)
+    },
+    time.column = "Start", 
+    return.ena.set = FALSE,
+    mode.column = "modality"
+) 
+
+ona_multimodal_tif_set <- model(ona_multimodal_tif_accum)
+```
+
+# 5. Analyze model
+## 1) Goodness of fit
+```{r}
+ona_multimodal_tif_gof <- ona:::correlations(ona_multimodal_tif_set)$pearson
+ona_multimodal_tif_gof[[1]]
+```
+## 2) Variance explained
+```{r}
+ona_multimodal_tif_SVD1 <- lm(ona_multimodal_tif_set$points$SVD1 ~ ona_multimodal_tif_set$points$LevelID) %>% summary()
+ona_multimodal_tif_SVD1$r.squared
+```
+## 3) Interpretive Alignment
+```{r}
+source("~/Desktop/epistemic_analytics/BabaIsYou_2023/BabaIsYou_2023/code/ona_plotter_babaisyou.R")
+make.ona.plot(ona_multimodal_tif_set,
+              "Grand Mean",
+              flip_x = FALSE)
+```
+
