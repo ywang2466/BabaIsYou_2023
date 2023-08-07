@@ -16,8 +16,8 @@ make.ona.plot <- function(set,
       points_color = c("red"),
       show_mean = TRUE, show_points = FALSE, with_ci = TRUE) %>%
     units(
-      points=set$points[set$points$LevelID == 1,],
-      points_color = c("red"),
+      points=set$points[set$points$LevelID == 2,],
+      points_color = c("blue"),
       show_mean = TRUE, show_points = FALSE, with_ci = TRUE) %>%
     edges(
       weights = set$line.weights,
